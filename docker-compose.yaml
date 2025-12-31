@@ -17,7 +17,7 @@ services:
     env_file:
       - .env
     environment:
-      - MANAGER_URL=https://n8nvizzu.duckdns.org/
+      - MANAGER_URL=https://evolutionvizzu.duckdns.org/
     expose:
       - 8080
 
