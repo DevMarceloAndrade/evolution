@@ -1,7 +1,6 @@
 version: '3.9'
 
 services:
-  # Serviço Principal da API
   api:
     container_name: evolution_api
     image: evoapicloud/evolution-api:latest
@@ -10,7 +9,7 @@ services:
       - redis
       - postgres
     ports:
-      - 8080:8080 # Porta da API (Host:Container)
+      - 8080:8080
     volumes:
       - evolution_instances:/evolution/instances
     networks:
@@ -18,38 +17,36 @@ services:
     env_file:
       - .env
     environment:
-      - MANAGER_URL=https://vizzusolu.duckdns.org/evolution
+      - MANAGER_URL=https://n8nvizzu.duckdns.org/
     expose:
       - 8080
 
-  # Serviço de Banco de Dados (PostgreSQL) - Adicionado
   postgres:
     image: postgres:16
     container_name: evolution_postgres
     restart: always
     environment:
-      POSTGRES_USER: user # Altere estes valores no seu .env se não quiser usar os padrões
-      POSTGRES_PASSWORD: pass
+      POSTGRES_USER: user 
       POSTGRES_DB: evolution_db
+      POSTGRES_PASSWORD: 1010
+    ports:
+      - "5433:5432"
     volumes:
       - evolution_postgres_data:/var/lib/postgresql/data
     networks:
       - evolution-net
 
-  # Serviço de Cache (Redis) - Adicionado E CORRIGIDO
   redis:
     image: redis:latest
     container_name: evolution_redis
     restart: always
-    # CORREÇÃO CRÍTICA: Mapeamento de porta alterado para evitar conflito com o N8N.
     ports:
-      - "6380:6379" # Host (6380) para Container (6379)
     networks:
       - evolution-net
 
 volumes:
   evolution_instances:
-  evolution_postgres_data: # Volume para persistência do DB
+  evolution_postgres_data:
   
 networks:
   evolution-net:
