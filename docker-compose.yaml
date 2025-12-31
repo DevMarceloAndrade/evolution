@@ -41,6 +41,7 @@ services:
     container_name: evolution_redis
     restart: always
     ports:
+      - "6379:6379"
     networks:
       - evolution-net
 
