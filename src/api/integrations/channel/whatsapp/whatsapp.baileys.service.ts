@@ -982,8 +982,9 @@ export class BaileysStartupService extends ChannelStartupService {
             continue;
           }
 
-          if (m.key.remoteJid?.includes('@lid') && m.key.senderPn) {
-            m.key.remoteJid = m.key.senderPn;
+          const senderPn = (m.key as any).senderPn ?? m.key.participant;
+          if (m.key.remoteJid?.includes('@lid') && senderPn) {
+            m.key.remoteJid = senderPn;
           }
 
           if (Long.isLong(m?.messageTimestamp)) {
@@ -1048,9 +1049,10 @@ export class BaileysStartupService extends ChannelStartupService {
     ) => {
       try {
         for (const received of messages) {
-          if (received.key.remoteJid?.includes('@lid') && received.key.senderPn) {
+          const senderPn = (received.key as any).senderPn ?? received.key.participant;
+          if (received.key.remoteJid?.includes('@lid') && senderPn) {
             (received.key as { previousRemoteJid?: string | null }).previousRemoteJid = received.key.remoteJid;
-            received.key.remoteJid = received.key.senderPn;
+            received.key.remoteJid = senderPn;
           }
           if (
             received?.messageStubParameters?.some?.((param) =>
@@ -1407,8 +1409,9 @@ export class BaileysStartupService extends ChannelStartupService {
           continue;
         }
 
-        if (key.remoteJid?.includes('@lid') && key.senderPn) {
-          key.remoteJid = key.senderPn;
+        const senderPn = (key as any).senderPn ?? key.participant;
+        if (key.remoteJid?.includes('@lid') && senderPn) {
+          key.remoteJid = senderPn;
         }
 
         const updateKey = `${this.instance.id}_${key.id}_${update.status}`;
