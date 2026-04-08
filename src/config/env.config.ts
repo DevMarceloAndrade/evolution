@@ -272,6 +272,14 @@ export type N8n = { ENABLED: boolean };
 export type Evoai = { ENABLED: boolean };
 export type Flowise = { ENABLED: boolean };
 
+export type HumanizeMessage = {
+  ENABLED: boolean;
+  MIN_DELAY: number;
+  MAX_DELAY: number;
+  TIME_PER_CHARACTER: number;
+  RANDOMIZATION: number;
+};
+
 export type S3 = {
   ACCESS_KEY: string;
   SECRET_KEY: string;
@@ -313,6 +321,7 @@ export interface Env {
   N8N: N8n;
   EVOAI: Evoai;
   FLOWISE: Flowise;
+  HUMANIZE_MESSAGE: HumanizeMessage;
   CACHE: CacheConf;
   S3?: S3;
   AUTHENTICATION: Auth;
@@ -630,6 +639,13 @@ export class ConfigService {
       FLOWISE: {
         ENABLED: process.env?.FLOWISE_ENABLED === 'true',
       },
+      HUMANIZE_MESSAGE: {
+        ENABLED: process.env?.HUMANIZE_MESSAGE_ENABLED === 'true',
+        MIN_DELAY: Number.parseInt(process.env?.HUMANIZE_MESSAGE_MIN_DELAY) || 1200,
+        MAX_DELAY: Number.parseInt(process.env?.HUMANIZE_MESSAGE_MAX_DELAY) || 4500,
+        TIME_PER_CHARACTER: Number.parseInt(process.env?.HUMANIZE_MESSAGE_TIME_PER_CHARACTER) || 55,
+        RANDOMIZATION: Number.parseInt(process.env?.HUMANIZE_MESSAGE_RANDOMIZATION) || 900,
+      },
       CACHE: {
         REDIS: {
           ENABLED: process.env?.CACHE_REDIS_ENABLED === 'true',
@@ -665,3 +681,4 @@ export class ConfigService {
 }
 
 export const configService = new ConfigService();
+

@@ -68,6 +68,7 @@ import {
   configService,
   ConfigSessionPhone,
   Database,
+  HumanizeMessage,
   Log,
   Openai,
   ProviderSession,
@@ -239,6 +240,7 @@ export class BaileysStartupService extends ChannelStartupService {
   private readonly userDevicesCache: CacheStore = new NodeCache({ stdTTL: 300000, useClones: false });
   private endSession = false;
   private logBaileys = this.configService.get<Log>('LOG').BAILEYS;
+  private humanizeMessage = this.configService.get<HumanizeMessage>('HUMANIZE_MESSAGE');
 
   public stateConnection: wa.StateConnection = { state: 'close' };
 
@@ -2020,6 +2022,62 @@ export class BaileysStartupService extends ChannelStartupService {
     );
   }
 
+  private extractTextForHumanizedDelay(message: any): string {
+    if (!message) {
+      return '';
+    }
+
+    if (typeof message === 'string') {
+      return message.trim();
+    }
+
+    const textCandidates = [
+      message?.conversation,
+      message?.extendedTextMessage?.text,
+      message?.imageMessage?.caption,
+      message?.videoMessage?.caption,
+      message?.documentMessage?.caption,
+      message?.buttonMessage?.body,
+      message?.listMessage?.description,
+      message?.pollMessage?.name,
+      message?.status?.content,
+      message?.text,
+      message?.caption,
+    ];
+
+    const text = textCandidates.find((candidate) => typeof candidate === 'string' && candidate.trim().length > 0);
+
+    return text ? text.trim() : '';
+  }
+
+  private resolveTypingDelay(message: any, options: Options | undefined, sender: string): number | null {
+    if (typeof options?.delay === 'number') {
+      return options.delay > 0 ? options.delay : null;
+    }
+
+    const config = this.humanizeMessage;
+
+    if (!config?.ENABLED) {
+      return null;
+    }
+
+    if (sender.includes('@broadcast')) {
+      return null;
+    }
+
+    const minDelay = Number.isFinite(config.MIN_DELAY) ? Math.max(0, config.MIN_DELAY) : 1200;
+    const maxDelay = Number.isFinite(config.MAX_DELAY) ? Math.max(minDelay, config.MAX_DELAY) : Math.max(minDelay, 4500);
+    const timePerCharacter = Number.isFinite(config.TIME_PER_CHARACTER) ? Math.max(0, config.TIME_PER_CHARACTER) : 55;
+    const randomization = Number.isFinite(config.RANDOMIZATION) ? Math.max(0, config.RANDOMIZATION) : 900;
+
+    const text = this.extractTextForHumanizedDelay(message);
+    const baseDelay = text ? text.length * timePerCharacter : minDelay;
+    const jitter = randomization > 0 ? Math.floor(Math.random() * (randomization * 2 + 1)) - randomization : 0;
+    const computedDelay = Math.round(baseDelay + jitter);
+
+    return Math.min(maxDelay, Math.max(minDelay, computedDelay));
+  }
+
   private async sendMessageWithTyping<T = proto.IMessage>(
     number: string,
     message: T,
@@ -2037,14 +2095,16 @@ export class BaileysStartupService extends ChannelStartupService {
     this.logger.verbose(`Sending message to ${sender}`);
 
     try {
-      if (options?.delay) {
-        this.logger.verbose(`Typing for ${options.delay}ms to ${sender}`);
-        if (options.delay > 20000) {
-          let remainingDelay = options.delay;
+      const typingDelay = this.resolveTypingDelay(message, options, sender);
+
+      if (typingDelay) {
+        this.logger.verbose(`Typing for ${typingDelay}ms to ${sender}`);
+        if (typingDelay > 20000) {
+          let remainingDelay = typingDelay;
           while (remainingDelay > 20000) {
             await this.client.presenceSubscribe(sender);
 
-            await this.client.sendPresenceUpdate((options.presence as WAPresence) ?? 'composing', sender);
+            await this.client.sendPresenceUpdate((options?.presence as WAPresence) ?? 'composing', sender);
 
             await delay(20000);
 
@@ -2055,7 +2115,7 @@ export class BaileysStartupService extends ChannelStartupService {
           if (remainingDelay > 0) {
             await this.client.presenceSubscribe(sender);
 
-            await this.client.sendPresenceUpdate((options.presence as WAPresence) ?? 'composing', sender);
+            await this.client.sendPresenceUpdate((options?.presence as WAPresence) ?? 'composing', sender);
 
             await delay(remainingDelay);
 
@@ -2064,9 +2124,9 @@ export class BaileysStartupService extends ChannelStartupService {
         } else {
           await this.client.presenceSubscribe(sender);
 
-          await this.client.sendPresenceUpdate((options.presence as WAPresence) ?? 'composing', sender);
+          await this.client.sendPresenceUpdate((options?.presence as WAPresence) ?? 'composing', sender);
 
-          await delay(options.delay);
+          await delay(typingDelay);
 
           await this.client.sendPresenceUpdate('paused', sender);
         }
@@ -4703,3 +4763,4 @@ export class BaileysStartupService extends ChannelStartupService {
     };
   }
 }
+
